@@ -1,144 +1,130 @@
-// const express = require('express');
-// const request = require('request');
-// const cheerio = require('cheerio');
-
-// const app = express();
-const port = 5000;
-
-// function scrapeIPOSubscriptionStatus(url, callback) {
-//     request(url, (error, response, html) => {
-//         if (!error && response.statusCode === 200) {
-//             const $ = cheerio.load(html);
-//             // Find the table element containing IPO subscription status
-//             const table = $('table.has-white-background-color');
-
-//             // Initialize arrays to store data from each row
-//               const headings = [];
-//               const rows = [];
-
-//               // Extract table headings
-//               headings.push('Status')
-//               table.find('thead tr th').each((index, element) => {
-//                 headings.push($(element).text().trim());
-//               });
-
-
-//               // Extract table rows
-//               table.find('tbody tr').each((index, element) => {
-//                 const row_data = [];
-//                 $(element)
-//                 .find('strong').first()
-//                   .each((i, el) => {
-//                     row_data.push($(el).text().trim());
-//                   });
-//                 $(element)
-//                 .find('td')
-//                   .each((i, el) => {
-//                       $(el).find('strong').remove().first().text().trim()
-//                     // const status = $(el).find('strong').first().text().trim();
-//                     row_data.push($(el).text().trim());
-//                   });
-
-//                 rows.push(row_data);
-//               });
-
-//               // Combine headings and rows into an object
-//               const tableData = { headings, data: rows.map((space)=> space.filter(ele => ele != "")) };
-//               callback(null, tableData);
-//         } else {
-//             callback(error || new Error('Scraping failed. Please check the URL and try again.'));
-//         }
-//     });
-// }
-
-
-// // const url = 'https://ipowatch.in/ipo-subscription-status-numbers/';
-// //     scrapeIPOSubscriptionStatus(url, (error, tableData) => {
-// //         if (error) {
-// //             res.status(500).json({ error: error.message });
-// //         } else {
-// //             console.log(tableData);
-// //         }
-// //     });
-// app.get('/ipolist', (req, res) => {
-//     const url = 'https://ipowatch.in/ipo-subscription-status-numbers/';
-//     scrapeIPOSubscriptionStatus(url, (error, tableData) => {
-//         if (error) {
-//             res.status(500).json({ error: error.message });
-//         } else {
-//             res.json(tableData);
-//         }
-//     });
-// });
-
-// app.get('/',(req,res)=>{
-//   res.status(200).json('api working good')
-// })
-
-
 const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
 
 const app = express();
+const port = 5000;
 
-app.get('/scrape', async (req, res) => {
+// For the /current Endpoint
+app.get('/current', async (req, res) => {
   try {
     const url = 'https://www.chittorgarh.com/report/ipo-subscription-status-live-bidding-from-bse-nse/21/';
     const response = await axios.get(url);
     const $ = cheerio.load(response.data);
 
-    const scrapedData = {
-      data: {
-        thead: [],
-        tbody: []
-      }
-    };
-
-    // Extract table header
-    $('table.table-bordered thead th').each((index, th) => {
-      const headerText = $(th).find('a').text().trim();
-      scrapedData.data.thead.push(headerText);
-    });
+    const scrapedData = [];
 
     const rows = $('table.table-bordered tbody tr');
 
     rows.each((index, row) => {
-      const rowData = [];
+      const rowData = {
+        'Company Link': '',
+        'Company Name': '',
+        'Close Date': '',
+        'Size (Rs Cr)': '',
+        'QIB (x)': '',
+        'sNII (x)': '',
+        'bNII (x)': '',
+        'NII (x)': '',
+        'Retail (x)': '',
+        'Employee (x)': '',
+        'Others (x)': '',
+        'Total (x)': '',
+        'Applications': '',
+        'Compare': ''
+      };
+
       const columns = $(row).find('td');
 
-      const companyLink = $(columns[0]).find('a').attr('href');
-      rowData.push(companyLink);
-      rowData.push($(columns[0]).find('a').text().trim());
+      rowData['Company Link'] = $(columns[0]).find('a').attr('href');
+      rowData['Company Name'] = $(columns[0]).find('a').text().trim();
+      rowData['Close Date'] = $(columns[1]).text().trim();
+      rowData['Size (Rs Cr)'] = $(columns[2]).text().trim();
+      rowData['QIB (x)'] = $(columns[3]).text().trim();
+      rowData['sNII (x)'] = $(columns[4]).text().trim();
+      rowData['bNII (x)'] = $(columns[5]).text().trim();
+      rowData['NII (x)'] = $(columns[6]).text().trim();
+      rowData['Retail (x)'] = $(columns[7]).text().trim();
+      rowData['Employee (x)'] = $(columns[8]).text().trim();
+      rowData['Others (x)'] = $(columns[9]).text().trim();
+      rowData['Total (x)'] = $(columns[10]).text().trim();
+      rowData['Applications'] = $(columns[11]).text().trim();
+      rowData['Compare'] = $(columns[13]).text().trim();
 
-      for (let i = 1; i < columns.length; i++) {
-        const columnHeader = scrapedData.data.thead[i];
-
-        if (columnHeader === 'Name' || columnHeader === 'Email') {
-          rowData.push($(columns[i]).text().trim());
-        } else {
-          rowData.push($(columns[i]).find('a').text().trim());
-        }
-      }
-
-      scrapedData.data.tbody.push(rowData);
+      scrapedData.push(rowData);
     });
 
-    console.log(scrapedData);
-
-    scrapedData.data.tbody = scrapedData.data.tbody.map((td) => td.filter((d) => d !== ''))
-    scrapedData.data.thead = scrapedData.data.thead.filter(t => (t !== '') && (t !== "compare"))
-    // console.log(scrapedData);
-    return res.status(200).json(scrapedData)
+    res.json({ data: scrapedData });
   } catch (error) {
     console.error('Error scraping data:', error);
     res.status(500).json({ error: 'An error occurred while scraping data.' });
   }
-})
+});
 
-app.get('/',(req,res)=>{
-  res.status(200).json('api working good')
-})
+// For the /yearfilter Endpoint
+app.get('/yearfilter', async (req, res) => {
+  const year = req.query.year || new Date().getFullYear().toString();
+  console.log(year);
+  try {
+    const url = `https://www.chittorgarh.com/report/ipo-subscription-status-live-bidding-data-bse-nse/21/?year=${year}`;
+    const response = await axios.get(url);
+    const $ = cheerio.load(response.data);
+
+    const scrapedData = [];
+
+    const rows = $('table.table-bordered tbody tr');
+
+    rows.each((index, row) => {
+      const rowData = {
+        'Company Link': '',
+        'Company Name': '',
+        'Close Date': '',
+        'Size (Rs Cr)': '',
+        'QIB (x)': '',
+        'sNII (x)': '',
+        'bNII (x)': '',
+        'NII (x)': '',
+        'Retail (x)': '',
+        'Employee (x)': '',
+        'Others (x)': '',
+        'Total (x)': '',
+        'Applications': '',
+        'Compare': ''
+      };
+
+      const columns = $(row).find('td');
+
+      rowData['Company Link'] = $(columns[0]).find('a').attr('href');
+      rowData['Company Name'] = $(columns[0]).find('a').text().trim();
+      rowData['Close Date'] = $(columns[1]).text().trim();
+      rowData['Size (Rs Cr)'] = $(columns[2]).text().trim();
+      rowData['QIB (x)'] = $(columns[3]).text().trim();
+      rowData['sNII (x)'] = $(columns[4]).text().trim();
+      rowData['bNII (x)'] = $(columns[5]).text().trim();
+      rowData['NII (x)'] = $(columns[6]).text().trim();
+      rowData['Retail (x)'] = $(columns[7]).text().trim();
+      rowData['Employee (x)'] = $(columns[8]).text().trim();
+      rowData['Others (x)'] = $(columns[9]).text().trim();
+      rowData['Total (x)'] = $(columns[10]).text().trim();
+      rowData['Applications'] = $(columns[11]).text().trim();
+      rowData['Compare'] = $(columns[13]).text().trim();
+
+      scrapedData.push(rowData);
+    });
+
+    res.json({ data: scrapedData });
+  } catch (error) {
+    console.error('Error scraping data:', error);
+    res.status(500).json({ error: 'An error occurred while scraping data.' });
+  }
+});
+
+// Homepage
+app.get('/', (req, res) => {
+  res.status(200).json('API is working fine');
+});
+
+// Start the server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
